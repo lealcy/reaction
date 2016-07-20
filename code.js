@@ -25,23 +25,31 @@ function start() {
     
     // DEBUG CODE
     circuit[5][5] = new WCross(5, 5);
-    circuit[10][10] = new SrcContinuous(10, 10);
+    //circuit[10][10] = new SrcContinuous(10, 10);
     circuit[11][10] = new WCross(11, 10);
     circuit[12][10] = new WCross(12, 10);
     circuit[12][11] = new WCross(12, 11);
     circuit[9][9] = new WCross(9, 9);
     circuit[10][9] = new WCross(10, 9);
+    circuit[20][20] = new SrcAlternated(20, 20);
+    circuit[10][20] = new WCross(10, 20);
 
     loadImages(() => {
         window.requestAnimationFrame(refresh);
+        update();
     });
 
 }
 
 function refresh() {
     window.requestAnimationFrame(refresh);
-    updateCircuit();
     drawCircuit();
+}
+
+function update() {
+    console.log("update");
+    updateCircuit();
+    setTimeout(update, 500);
 }
 
 function clearCircuit() {
@@ -64,6 +72,11 @@ function drawCircuit() {
 }
 
 function updateCircuit() {
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            circuit[x][y].reset();
+        }
+    }  
     for (let x = 0; x < width; x++) {
         for (let y = 0; y < height; y++) {
             circuit[x][y].update();
@@ -90,30 +103,60 @@ function Empty(x, y) {
     this.x = x;
     this.y = y;
     this.update = () => {};
-    this.getState = () => 0;
     this.getSprite = () => sprites["empty"];
+    this.reset = () => {};
+    this.propagate = () => {};
 }
 
 function SrcContinuous(x, y) {
     this.x = x;
     this.y = y;
-    this.update = () => {};
-    this.getState = () => 1;
+    this.update = () =>{
+        getNeighbor(this.x, this.y, TOP).propagate(1, BOTTOM);
+        getNeighbor(this.x, this.y, RIGHT).propagate(1, LEFT);
+        getNeighbor(this.x, this.y, BOTTOM).propagate(1, TOP);
+        getNeighbor(this.x, this.y, LEFT).propagate(1, RIGHT);
+    }
     this.getSprite = () => sprites["src_continuous"];
+    this.reset = () => {};
+    this.propagate = () => {};
 }
+
+function SrcAlternated(x, y) {
+    this.x = x;
+    this.y = y;
+    this.state = 0;
+    this.update = () => { 
+        this.state = !this.state;
+        if (this.state) {
+            getNeighbor(this.x, this.y, TOP).propagate(this.state, BOTTOM);
+            getNeighbor(this.x, this.y, RIGHT).propagate(this.state, LEFT);
+            getNeighbor(this.x, this.y, BOTTOM).propagate(this.state, TOP);
+            getNeighbor(this.x, this.y, LEFT).propagate(this.state, RIGHT);
+        }
+    };
+    this.getSprite = () => this.state ? sprites["w_crossA"] : sprites["w_cross"];
+    this.reset = () => {};
+    this.propagate = () => {};
+}
+
 
 function WCross(x, y) {
     this.x = x;
     this.y = y;
     this.state = 0;
-    this.update = () => {
-        this.state = getNeighbor(this.x, this.y, TOP).getState(BOTTOM) || 
-            getNeighbor(this.x, this.y, RIGHT).getState(LEFT) ||
-            getNeighbor(this.x, this.y, BOTTOM).getState(TOP) ||
-            getNeighbor(this.x, this.y, LEFT).getState(RIGHT);
-    };
-    this.getState = () => this.state;
+    this.update = () => {};
     this.getSprite = () => this.state ? sprites["w_crossA"] : sprites["w_cross"];
+    this.reset = () => this.state = 0;
+    this.propagate = (state, dir) =>  {
+        if (!this.state) {
+            this.state = state;
+            getNeighbor(this.x, this.y, TOP).propagate(this.state, BOTTOM);
+            getNeighbor(this.x, this.y, RIGHT).propagate(this.state, LEFT);
+            getNeighbor(this.x, this.y, BOTTOM).propagate(this.state, TOP);
+            getNeighbor(this.x, this.y, LEFT).propagate(this.state, RIGHT);
+        }
+    };
 }
 
 function WCrossjump(x, y) {
@@ -121,18 +164,7 @@ function WCrossjump(x, y) {
     this.y = y;
     this.stateV = 0;
     this.stateH = 0;
-    this.update = () => {
-        this.stateV = getNeighbor(this.x, this.y, TOP).getState(BOTTOM) || 
-            getNeighbor(this.x, this.y, BOTTOM).getState(TOP);
-        this.stateH = getNeighbor(this.x, this.y, RIGHT).getState(LEFT) ||
-            getNeighbor(this.x, this.y, LEFT).getState(RIGHT);
-    };
-    this.getState = (dir) => {
-        if (dir === TOP || dir === BOTTOM) {
-            return this.stateV;
-        }
-        return this.stateH;
-    };
+    this.update = () => {};
     this.getSprite = () => { 
         if (this.stateV && this.stateH) {
             return sprites["w_crossjumpA"];
@@ -143,40 +175,52 @@ function WCrossjump(x, y) {
         }
         return sprites["w_crossjump"];
     };
+    this.reset = () => this.stateV = this.stateH = 0;
+    this.propagate = (state, dir) => {
+        if ((dir === TOP || dir === BOTTOM) && !this.stateV) {
+            this.stateV = state;
+            getNeighbor(this.x, this.y, TOP).propagate(this.stateV, BOTTOM);
+            getNeighbor(this.x, this.y, BOTTOM).propagate(this.stateV, TOP);
+        }
+        if ((dir === LEFT || dir === RIGHT) && !this.stateH) {
+            this.stateH = state;
+            getNeighbor(this.x, this.y, RIGHT).propagate(this.stateH, LEFT);
+            getNeighbor(this.x, this.y, LEFT).propagate(this.stateH, RIGHT);
+        }
+    };
 }
 
 function WHor(x, y) {
     this.x = x;
     this.y = y;
     this.state = 0;
-    this.update = () => {
-        this.state = getNeighbor(this.x, this.y, RIGHT).getState(LEFT) ||
-            getNeighbor(this.x, this.y, LEFT).getState(RIGHT);
-    };
-    this.getState = (dir) => {
-        if (dir === TOP || dir === BOTTOM) {
-            return 0;
-        }
-        return this.state;
-    };
+    this.update = () => {};
     this.getSprite = () => this.state ? sprites["w_horA"] : sprites["w_hor"];
+    this.reset = () => this.state = 0;
+    this.propagate = (state, dir) => {
+        if ((dir === LEFT || dir === RIGHT) && !this.state) {
+            this.state = state;
+            getNeighbor(this.x, this.y, RIGHT).propagate(this.state, LEFT);
+            getNeighbor(this.x, this.y, LEFT).propagate(this.state, RIGHT);
+        }
+    } 
 }
 
 function WVer(x, y) {
     this.x = x;
     this.y = y;
     this.state = 0;
-    this.update = () => {
-        this.state = getNeighbor(this.x, this.y, TOP).getState(BOTTOM) || 
-            getNeighbor(this.x, this.y, BOTTOM).getState(TOP);
-    };
-    this.getState = (dir) => {
-        if (dir === RIGHT || dir === LEFT) {
-            return 0;
-        }
-        return this.state;
-    };
+    this.update = () => {};
     this.getSprite = () => this.state ? sprites["w_verA"] : sprites["w_ver"];
+        this.reset = () => this.state = 0;
+    this.propagate = (state, dir) => {
+        if ((dir === TOP || dir === BOTTOM) && !this.state) {
+            this.state = state;
+            getNeighbor(this.x, this.y, TOP).propagate(this.state, BOTTOM);
+            getNeighbor(this.x, this.y, BOTTOM).propagate(this.state, TOP);
+        }
+    } 
+
 }
 
 function getNeighbor(x, y, dir) {
