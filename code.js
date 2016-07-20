@@ -15,7 +15,7 @@ const BOTTOM = 2;
 const LEFT = 3;
 
 let images = ["empty", "w_cross", "w_crossA", "src_continuous", "w_hor", "w_horA", "w_ver", "w_verA",
-    "w_crossjump", "w_crossjumpA", "w_crossjumpV", "w_crossjumpH"  
+    "w_crossjump", "w_crossjumpA", "w_crossjumpV", "w_crossjumpH", "src_alternated", "src_alternatedA"
 ];
 let sprites = {};
 
@@ -25,7 +25,7 @@ function start() {
     
     // DEBUG CODE
     circuit[5][5] = new WCross(5, 5);
-    //circuit[10][10] = new SrcContinuous(10, 10);
+    circuit[10][10] = new SrcContinuous(10, 10);
     circuit[11][10] = new WCross(11, 10);
     circuit[12][10] = new WCross(12, 10);
     circuit[12][11] = new WCross(12, 11);
@@ -135,7 +135,7 @@ function SrcAlternated(x, y) {
             getNeighbor(this.x, this.y, LEFT).propagate(this.state, RIGHT);
         }
     };
-    this.getSprite = () => this.state ? sprites["w_crossA"] : sprites["w_cross"];
+    this.getSprite = () => this.state ? sprites["src_alternatedA"] : sprites["src_alternated"];
     this.reset = () => {};
     this.propagate = () => {};
 }
